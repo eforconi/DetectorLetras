@@ -31,6 +31,7 @@ def create_dataset(filelist, name):
     n = len(filelist)
     f.create_dataset(f"{name}_images", (n, 32*32), np.uint8)
     f.create_dataset(f"{name}_tags", (n, 1), np.uint8)
+    f.create_dataset(f"{name}_files", (n, 1), dtype=h5py.string_dtype())
 
     print(f"Adding {n} images to {name} dataset")
     for i in range(n):
@@ -38,6 +39,7 @@ def create_dataset(filelist, name):
         img = read_image(path)
         f[f"{name}_images"][i] = img
         f[f"{name}_tags"][i] = 1 if "/a/" in path else 0
+        f[f"{name}_files"][i] = path
 
     f.close()
 

@@ -8,12 +8,14 @@ def load_datasets():
     with h5py.File("../dataset/train.h5", "r") as f:
         train_images = np.array(f["train_images"])
         train_tags = np.array(f["train_tags"])
+        train_paths = list(f["train_files"])
 
     with h5py.File("../dataset/test.h5", "r") as f:
         test_images = np.array(f["test_images"])
         test_tags = np.array(f["test_tags"])
+        test_paths = list(f["test_files"])
 
-    return train_images.T, train_tags.T, test_images, test_tags
+    return train_images.T, train_tags.T, train_paths, test_images.T, test_tags.T, test_paths
 
 
 def initialize_parameters_deep(layer_dims):
@@ -185,21 +187,57 @@ def update_parameters(parameters, grads, learning_rate):
     ### END CODE HERE ###
     return parameters
 
+def calculate_accuracy(predictions, tags):
+    correct = 0
+    n = len(predictions[0])
+    for j in range(n):
+        actual = 1 if predictions[0][j] >= 0.5 else 0
+        expected = tags[0][j]
+        if actual == expected:
+            correct += 1
+    accuracy = round(correct / n * 100, 3)
+    return accuracy
 
-train_images, train_tags, test_images, test_tags = load_datasets()
-layer_dims = [1024, 256, 128, 1]
+
+train_images, train_tags, train_paths, test_images, test_tags, test_paths = load_datasets()
 
 
+layer_dims = [1024, 128, 64, 1]
 parameters = initialize_parameters_deep(layer_dims)
 
+learning_rate = 0.001
 
-for i in range(500):
+for i in range(1000):
     AL, caches = L_model_forward(train_images, parameters)
-    cost = compute_cost(AL, train_tags)
+    train_cost = compute_cost(AL, train_tags)
     grads = L_model_backward(AL, train_tags, caches)
-    parameters = update_parameters(parameters, grads, 0.0001)
-    print(i, cost)
+    parameters = update_parameters(parameters, grads, learning_rate)
+    if i > 0 and i % 50 == 0:
+        learning_rate *= 0.9
+
+    train_accuracy = calculate_accuracy(AL, train_tags)
+    AT, caches_t = L_model_forward(test_images, parameters)
+    test_cost = compute_cost(AT, test_tags)
+    test_accuracy = calculate_accuracy(AT, test_tags)
+    print(f"Epoch: {i} Train Cost: {train_cost} Train Accuracy: {train_accuracy}% Test Cost: {test_cost} Test Accuracy: {test_accuracy}%")
 
 
-for i in range(len(AL[0])):
-    print(AL[0][i], train_tags[0][i])
+AT, caches_t = L_model_forward(test_images, parameters)
+
+m = [[0] * 2  for i in range(2)]
+
+for i in range(len(AT[0])):
+    actual = 1 if AT[0][i] >= 0.5 else 0
+    expected = test_tags[0][i]
+    m[expected][actual] += 1
+    if expected != actual:
+        print(test_paths[i])
+
+
+print("  |   0   |   1   |")
+for i in range(len(m)):
+    print("{} |".format(i), end="")
+    for j in range(len(m[0])):
+        print("{:^7}|".format(m[i][j]), end="")
+    print("")
+
